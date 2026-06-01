@@ -5,3 +5,4 @@ openai==1.6.1
 python-dotenv==1.0.0
 pyserial==3.5
 requests==2.31.0
+gunicorn==21.2.0
