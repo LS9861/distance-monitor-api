@@ -543,6 +543,7 @@ def dashboard():
         </div>
         
         <script>
+<<<<<<< HEAD
             let chart;
             const API_KEY = 'KyaNdPknHcxKGQRosNoOObG0XBZBCMupv_60vlvxYSY';
             
@@ -564,6 +565,26 @@ def dashboard():
                     return null;
                 }
             }
+=======
+            async function getStats() {{
+                const response = await fetch('/stats?api_key=KyaNdPknHcxKGQRosNoOObG0XBZBCMupv_60vlvxYSY');
+                const data = await response.json();
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat"><div class="stat-number">${{data.total_readings}}</div><div>Total Readings</div></div>
+                    <div class="stat"><div class="stat-number ${{data.danger_count > 0 ? 'danger' : ''}}">${{data.danger_count}}</div><div>Danger Alerts</div></div>
+                    <div class="stat"><div class="stat-number ${{data.warning_count > 0 ? 'warning' : ''}}">${{data.warning_count}}</div><div>Warning Alerts</div></div>
+                    <div class="stat"><div class="stat-number">${{data.avg_distance}} cm</div><div>Average Distance</div></div>
+                    <div class="stat"><div class="stat-number">${{data.last_24h_readings}}</div><div>Last 24 Hours</div></div>
+                `;
+            }}
+            
+            async function getAI() {{
+                document.getElementById('ai-result').innerHTML = '<pre>🤖 Analyzing...</pre>';
+                const response = await fetch('/analyze?api_key=KyaNdPknHcxKGQRosNoOObG0XBZBCMupv_60vlvxYSY');
+                const data = await response.json();
+                document.getElementById('ai-result').innerHTML = `<pre>${{JSON.stringify(data, null, 2)}}</pre>`;
+            }}
+>>>>>>> 7b1bc279bc45b21aaa7ce9d03d8c446eb45968b6
             
             async function fetchReadings() {
                 try {
