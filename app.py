@@ -329,7 +329,7 @@ def dashboard():
         
         <script>
             async function getStats() {{
-                const response = await fetch('/stats');
+                const response = await fetch('/stats?api_key=KyaNdPknHcxKGQRosNoOObG0XBZBCMupv_60vlvxYSY');
                 const data = await response.json();
                 document.getElementById('stats').innerHTML = `
                     <div class="stat"><div class="stat-number">${{data.total_readings}}</div><div>Total Readings</div></div>
@@ -342,7 +342,7 @@ def dashboard():
             
             async function getAI() {{
                 document.getElementById('ai-result').innerHTML = '<pre>🤖 Analyzing...</pre>';
-                const response = await fetch('/analyze');
+                const response = await fetch('/analyze?api_key=KyaNdPknHcxKGQRosNoOObG0XBZBCMupv_60vlvxYSY');
                 const data = await response.json();
                 document.getElementById('ai-result').innerHTML = `<pre>${{JSON.stringify(data, null, 2)}}</pre>`;
             }}
