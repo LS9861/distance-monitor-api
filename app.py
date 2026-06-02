@@ -285,70 +285,446 @@ def get_logs():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    """Enhanced dashboard with database stats"""
-    stats = get_statistics_from_db()
+    """Enhanced dashboard with graphs and waveforms"""
     
-    return f'''
+    return '''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Distance Monitor - Production System</title>
+        <title>Distance Monitor - Pro Dashboard</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <style>
-            body {{ font-family: Arial; margin: 20px; background: #f0f2f5; }}
-            .container {{ max-width: 1200px; margin: 0 auto; }}
-            .card {{ background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
-            .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }}
-            .stat {{ background: #e9ecef; padding: 15px; border-radius: 8px; text-align: center; }}
-            .stat-number {{ font-size: 28px; font-weight: bold; }}
-            .danger {{ color: #dc3545; }}
-            .warning {{ color: #ffc107; }}
-            .safe {{ color: #28a745; }}
-            button {{ background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }}
-            pre {{ background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }}
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }
+            
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+            
+            /* Header */
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 20px;
+                padding: 25px 30px;
+                margin-bottom: 25px;
+                color: white;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            }
+            
+            .header h1 {
+                font-size: 28px;
+                margin-bottom: 8px;
+            }
+            
+            .header p {
+                opacity: 0.9;
+                font-size: 14px;
+            }
+            
+            .status-badge {
+                display: inline-block;
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-top: 10px;
+            }
+            
+            .status-online {
+                background: #10b981;
+                color: white;
+            }
+            
+            /* Stats Grid */
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin-bottom: 25px;
+            }
+            
+            .stat-card {
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                padding: 20px;
+                text-align: center;
+                color: white;
+                border: 1px solid rgba(255,255,255,0.2);
+                transition: transform 0.3s;
+            }
+            
+            .stat-card:hover {
+                transform: translateY(-5px);
+            }
+            
+            .stat-value {
+                font-size: 32px;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            
+            .stat-label {
+                font-size: 14px;
+                opacity: 0.8;
+            }
+            
+            .danger { color: #ef4444; }
+            .warning { color: #f59e0b; }
+            .safe { color: #10b981; }
+            
+            /* Chart Container */
+            .chart-container {
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                padding: 20px;
+                margin-bottom: 25px;
+                border: 1px solid rgba(255,255,255,0.2);
+            }
+            
+            .chart-title {
+                color: white;
+                font-size: 18px;
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            canvas {
+                max-height: 400px;
+                width: 100%;
+            }
+            
+            /* Alerts Section */
+            .alerts-section {
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                padding: 20px;
+                border: 1px solid rgba(255,255,255,0.2);
+            }
+            
+            .alert-item {
+                background: rgba(0,0,0,0.3);
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .alert-danger {
+                border-left: 4px solid #ef4444;
+            }
+            
+            .alert-warning {
+                border-left: 4px solid #f59e0b;
+            }
+            
+            .alert-time {
+                font-size: 12px;
+                color: #888;
+            }
+            
+            /* Loading */
+            .loading {
+                text-align: center;
+                color: white;
+                padding: 40px;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            
+            .live-indicator {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                background: #10b981;
+                border-radius: 50%;
+                animation: pulse 1.5s infinite;
+                margin-left: 10px;
+            }
+            
+            @media (max-width: 768px) {
+                .stats-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 10px;
+                }
+                .stat-value {
+                    font-size: 24px;
+                }
+                .header h1 {
+                    font-size: 22px;
+                }
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="card">
-                <h1>📡 Distance Monitor - Production System</h1>
-                <p>Version 2.0 | Database: {stats['total_readings']} total readings</p>
-                <p>⚙️ Config: Danger &lt; {config.DANGER_THRESHOLD}cm | Warning &lt; {config.WARNING_THRESHOLD}cm</p>
+            <div class="header">
+                <h1>📡 Distance Monitor Pro 
+                    <span class="live-indicator"></span>
+                </h1>
+                <p>Real-time distance monitoring with waveform visualization | Cloud-powered by Render</p>
+                <div class="status-badge status-online">🟢 LIVE</div>
             </div>
             
-            <div class="card">
-                <h2>📊 Live Statistics</h2>
-                <div class="stats-grid" id="stats"></div>
+            <div class="stats-grid" id="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="total">--</div>
+                    <div class="stat-label">Total Readings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value danger" id="danger">--</div>
+                    <div class="stat-label">Danger Alerts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value warning" id="warning">--</div>
+                    <div class="stat-label">Warning Alerts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avg">--</div>
+                    <div class="stat-label">Average Distance</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="min">--</div>
+                    <div class="stat-label">Closest (cm)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="last24">--</div>
+                    <div class="stat-label">Last 24 Hours</div>
+                </div>
             </div>
             
-            <div class="card">
-                <h2>🤖 AI Analysis</h2>
-                <button onclick="getAI()">Get AI Insights</button>
-                <div id="ai-result"><pre>Click button to analyze</pre></div>
+            <div class="chart-container">
+                <div class="chart-title">
+                    📈 Distance Waveform <span style="font-size:12px;">(Last 50 readings)</span>
+                </div>
+                <canvas id="distanceChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">
+                    🤖 AI Safety Analysis
+                    <button onclick="runAIAnalysis()" style="margin-left:auto; background:#667eea; border:none; padding:5px 15px; border-radius:20px; color:white; cursor:pointer;">Analyze Now</button>
+                </div>
+                <div id="ai-result" style="color:white; padding:15px; background:rgba(0,0,0,0.3); border-radius:10px;">
+                    Click "Analyze Now" for AI insights
+                </div>
+            </div>
+            
+            <div class="alerts-section">
+                <div class="chart-title">
+                    🔔 Recent Alerts
+                </div>
+                <div id="alerts-list">
+                    <div class="loading">Loading alerts...</div>
+                </div>
             </div>
         </div>
         
         <script>
-            async function getStats() {{
-                const response = await fetch('/stats');
-                const data = await response.json();
-                document.getElementById('stats').innerHTML = `
-                    <div class="stat"><div class="stat-number">${{data.total_readings}}</div><div>Total Readings</div></div>
-                    <div class="stat"><div class="stat-number ${{data.danger_count > 0 ? 'danger' : ''}}">${{data.danger_count}}</div><div>Danger Alerts</div></div>
-                    <div class="stat"><div class="stat-number ${{data.warning_count > 0 ? 'warning' : ''}}">${{data.warning_count}}</div><div>Warning Alerts</div></div>
-                    <div class="stat"><div class="stat-number">${{data.avg_distance}} cm</div><div>Average Distance</div></div>
-                    <div class="stat"><div class="stat-number">${{data.last_24h_readings}}</div><div>Last 24 Hours</div></div>
-                `;
-            }}
+            let chart;
+            const API_KEY = 'KyaNdPknHcxKGQRosNoOObG0XBZBCMupv_60vlvxYSY';
             
-            async function getAI() {{
-                document.getElementById('ai-result').innerHTML = '<pre>🤖 Analyzing...</pre>';
-                const response = await fetch('/analyze');
-                const data = await response.json();
-                document.getElementById('ai-result').innerHTML = `<pre>${{JSON.stringify(data, null, 2)}}</pre>`;
-            }}
+            async function fetchData() {
+                try {
+                    const response = await fetch(`/stats?api_key=${API_KEY}`);
+                    const data = await response.json();
+                    
+                    document.getElementById('total').innerHTML = data.total_readings || 0;
+                    document.getElementById('danger').innerHTML = data.danger_count || 0;
+                    document.getElementById('warning').innerHTML = data.warning_count || 0;
+                    document.getElementById('avg').innerHTML = (data.avg_distance || 0) + ' cm';
+                    document.getElementById('min').innerHTML = (data.min_distance || 0) + ' cm';
+                    document.getElementById('last24').innerHTML = data.last_24h_readings || 0;
+                    
+                    return data;
+                } catch(e) {
+                    console.error('Stats error:', e);
+                    return null;
+                }
+            }
             
-            getStats();
-            setInterval(getStats, 5000);
+            async function fetchReadings() {
+                try {
+                    const response = await fetch(`/readings?api_key=${API_KEY}&limit=50`);
+                    const data = await response.json();
+                    return data.readings || [];
+                } catch(e) {
+                    console.error('Readings error:', e);
+                    return [];
+                }
+            }
+            
+            async function fetchAlerts() {
+                try {
+                    const response = await fetch(`/alerts?api_key=${API_KEY}`);
+                    const data = await response.json();
+                    return data.alerts || [];
+                } catch(e) {
+                    console.error('Alerts error:', e);
+                    return [];
+                }
+            }
+            
+            function updateChart(readings) {
+                if (!readings || readings.length === 0) return;
+                
+                const reversed = [...readings].reverse();
+                const distances = reversed.map(r => r.distance);
+                const timestamps = reversed.map(r => {
+                    const date = new Date(r.timestamp);
+                    return date.toLocaleTimeString();
+                });
+                
+                const ctx = document.getElementById('distanceChart').getContext('2d');
+                
+                if (chart) {
+                    chart.destroy();
+                }
+                
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timestamps,
+                        datasets: [
+                            {
+                                label: 'Distance (cm)',
+                                data: distances,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 3,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'Danger Zone (<20cm)',
+                                data: distances.map(d => d < 20 ? d : null),
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                borderWidth: 2,
+                                pointRadius: 5,
+                                pointBackgroundColor: '#ef4444'
+                            },
+                            {
+                                label: 'Warning Zone (<50cm)',
+                                data: distances.map(d => (d >= 20 && d < 50) ? d : null),
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                                borderWidth: 2,
+                                pointRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: 'white' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.raw} cm`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Distance (cm)', color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'white' }
+                            },
+                            x: {
+                                title: { display: true, text: 'Time', color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'white', maxRotation: 45, minRotation: 45 }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function updateAlerts(alerts) {
+                const container = document.getElementById('alerts-list');
+                if (!alerts || alerts.length === 0) {
+                    container.innerHTML = '<div class="alert-item">✅ No recent alerts</div>';
+                    return;
+                }
+                
+                container.innerHTML = alerts.slice(0, 10).map(alert => `
+                    <div class="alert-item ${alert.type === 'DANGER' ? 'alert-danger' : 'alert-warning'}">
+                        <div>
+                            <strong>${alert.type === 'DANGER' ? '🔴' : '🟡'} ${alert.type}</strong>
+                            <span style="margin-left:10px;">Distance: ${alert.distance} cm</span>
+                        </div>
+                        <div class="alert-time">${new Date(alert.timestamp).toLocaleTimeString()}</div>
+                    </div>
+                `).join('');
+            }
+            
+            async function runAIAnalysis() {
+                const aiDiv = document.getElementById('ai-result');
+                aiDiv.innerHTML = '🤖 Analyzing distance patterns with DeepSeek AI...';
+                
+                try {
+                    const response = await fetch(`/analyze?api_key=${API_KEY}`);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        aiDiv.innerHTML = `⚠️ ${data.error}`;
+                    } else {
+                        aiDiv.innerHTML = `
+                            <div style="white-space: pre-wrap;">${data.analysis}</div>
+                            <div style="margin-top:10px; font-size:12px; opacity:0.7;">
+                                📊 Analyzed ${data.readings_analyzed || 0} readings
+                            </div>
+                        `;
+                    }
+                } catch(e) {
+                    aiDiv.innerHTML = `❌ AI analysis failed: ${e.message}`;
+                }
+            }
+            
+            async function refreshAll() {
+                const stats = await fetchData();
+                const readings = await fetchReadings();
+                const alerts = await fetchAlerts();
+                
+                if (readings.length > 0) {
+                    updateChart(readings);
+                }
+                
+                updateAlerts(alerts);
+            }
+            
+            refreshAll();
+            setInterval(refreshAll, 10000);
         </script>
     </body>
     </html>
